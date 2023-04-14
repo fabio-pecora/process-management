@@ -16,6 +16,7 @@ public:
     int start_time;
     int completion_time;
     int turnaround_time;
+    int last_checked;
 
     Process(string n, int at, int p, int bt) {
         name = n;
@@ -29,7 +30,7 @@ public:
 };
 
 void fcfs(vector<Process>& processes);
-void priorityy(vector<Process>& processes);
+void priorityy(vector<Process>& processes, int quantum);
 void sjn(vector<Process>& processes);
 
 int main() {
@@ -70,7 +71,7 @@ int main() {
         cout << "Which algorithm do you want to use? fcfs --> first come first served, p --> priority or sjn --> shortest job next" << endl;
         cin >> choice;
         if(choice == "fcfs") fcfs(processes);
-        else if(choice == "p") priorityy(processes);
+        else if(choice == "p") priorityy(processes, 1);
         else if(choice == "sjn") sjn(processes);
         else cout << "Wrong selection!" << endl;
         
@@ -117,31 +118,42 @@ void fcfs(vector<Process>& processes) {
 }
 
 // Priority Algorithm
-void priorityy(vector<Process>& processes) {
+void priorityy(vector<Process>& processes, int quantum) {
     int current_time = 0;
     bool all_done = false;
 
     while (!all_done) {
-        // get highest priority process that has arrived
         int highest_priority = INT_MAX;
         int idx = -1;
+        
+        // check processes that have arrived and are waiting
         for (int i = 0; i < processes.size(); i++) {
-            if (processes[i].arrival_time <= current_time && processes[i].priority < highest_priority && processes[i].burst_time > 0) {
-                highest_priority = processes[i].priority;
-                idx = i;
+            if (processes[i].arrival_time <= current_time && processes[i].burst_time > 0) {
+                // preemptive - check for highest priority every quantum time units
+                if ((current_time - processes[i].last_checked) % quantum == 0) {
+                    if (processes[i].priority < highest_priority) {
+                        highest_priority = processes[i].priority;
+                        idx = i;
+                    }
+                }
             }
         }
-
+        
         // if no process can be executed, move time forward
         if (idx == -1) {
             current_time++;
             continue;
         }
-
-        // set start time
-        processes[idx].start_time = current_time;
+        
+        // set start time if process just started
+        if (processes[idx].start_time == -1) {
+            processes[idx].start_time = current_time;
+        }
+        
         // execute process for one time unit
         processes[idx].burst_time--;
+        // update last checked time
+        processes[idx].last_checked = current_time;
         // update current time
         current_time++;
         // if process is done, set completion time and turnaround time
@@ -168,7 +180,7 @@ void priorityy(vector<Process>& processes) {
     avg_tat /= processes.size();
     
     // output results
-    cout << "Priority Algorithm:\n";
+    cout << "Priority Preemptive Algorithm:\n";
     cout << "Process Execution Order: ";
     for (int i = 0; i < processes.size(); i++) {
         cout << processes[i].name << " ";
@@ -189,6 +201,7 @@ void priorityy(vector<Process>& processes) {
     
     cout << "Average Turnaround Time: " << avg_tat << "\n";
 }
+
 
 void sjn(vector<Process>& processes) {
     int current_time = 0;
